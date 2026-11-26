@@ -1,0 +1,9 @@
+# Coverage for `pytest --cov=raksha`: the end-to-end tests run main.py in a child process,
+# so measure child processes too.
+[run]
+source = raksha
+patch = subprocess
+parallel = true
+
+[report]
+skip_empty = true

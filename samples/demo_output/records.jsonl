@@ -1,8 +1,0 @@
-{"file": "sanitized/notes/discharge_0500b53ee1.txt", "loc": "doc", "patient": "PSN-WR6SWW", "status": "suppressed"}
-{"file": "sanitized/notes/rx_hindi.txt", "loc": "doc", "patient": "PSN-WR6SWW", "status": "generalized"}
-{"file": "sanitized/notes/visitor_log.txt", "loc": "doc", "patient": null}
-{"file": "sanitized/opd/visits.json", "loc": "/visits/0", "patient": "PSN-NMER6T"}
-{"file": "sanitized/opd/visits.json", "loc": "/visits/1", "patient": "PSN-9DJRX7"}
-{"file": "sanitized/registration/patients.csv", "loc": "row:0", "patient": "PSN-WR6SWW", "status": "generalized"}
-{"file": "sanitized/registration/patients.csv", "loc": "row:1", "patient": "PSN-9DJRX7", "status": "generalized"}
-{"file": "sanitized/registration/patients.csv", "loc": "row:2", "patient": "PSN-NMER6T", "status": "generalized"}

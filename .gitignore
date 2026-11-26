@@ -12,3 +12,6 @@ NOTES_DATA.md
 PROGRESS.md
 BRIEF_DRAFT.md
 prompt.txt
+.coverage
+.coverage.*
+htmlcov/

@@ -29,11 +29,14 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--data", required=True)
     ap.add_argument("--secret", default="leak-scan-secret")
+    ap.add_argument("--out", help="keep the pipeline output here (default: a throwaway temp folder)")
     a = ap.parse_args()
     data = Path(a.data)
     man = json.loads((data / "manifest.json").read_text(encoding="utf-8"))
     tmp = Path(tempfile.mkdtemp(prefix="leakscan-"))
-    out = tmp / "out"
+    out = Path(a.out) if a.out else tmp / "out"
+    if out.exists() and any(out.iterdir()):
+        sys.exit(f"--out {out} is not empty; remove it first")
     run_tmp = tmp / "tmpdir"
     run_tmp.mkdir()
     env = dict(os.environ, RAKSHA_SECRET=a.secret, TMPDIR=str(run_tmp), HOME=str(run_tmp))
@@ -49,11 +52,12 @@ def main():
         blobs["TMPDIR/" + f.name] = f.read_bytes().decode("utf-8", "replace") if f.is_file() else ""
     blobs["filenames"] = "\n".join(names)
     all_text = norm("\n".join(blobs.values()))
-    digits_only = re.sub(r"\D", "", "\n".join(blobs.values()))
+    # Devanagari / other Unicode digits count as digits: '९८७६...' is the same phone as '9876...'
+    digits_only = "".join(str(unicodedata.digit(c)) for c in "\n".join(blobs.values()) if c.isdigit())
     leaks = []
     for s in man["pii"] + man["canaries"]:
         d = re.sub(r"\D", "", s)
-        hit = norm(s) in all_text or (len(d) >= 8 and d == re.sub(r"\D", "", s) and d in digits_only)
+        hit = norm(s) in all_text or (len(d) >= 8 and d in digits_only)
         if hit:
             where = [k for k, v in blobs.items() if norm(s) in norm(v)]
             leaks.append((s if s not in man["canaries"] else "CANARY", where[:3]))
@@ -83,14 +87,22 @@ def main():
             if x:
                 by_pid.setdefault(x, set()).add(mrn)
     fp = sum(len(v) - 1 for v in by_pid.values())
-    kept = sum(1 for c in man["clinical"] if norm(c) in all_text)
+    missing = [c for c in man["clinical"] if norm(c) not in all_text]
+    kept = len(man["clinical"]) - len(missing)
+    wrong = [pair for pair in man.get("must_not_merge", [])
+             if any(pair[0] in v and pair[1] in v for v in by_pid.values())]
     print(f"exit code {p.returncode}")
     print(f"PII strings leaked: {len(leaks)} of {len(man['pii']) + len(man['canaries'])}")
     for l in leaks[:30]:
         print("   ", l)
     print(f"clinical values kept: {kept}/{len(man['clinical'])}")
+    for c in missing:
+        print("    missing:", c)
     print(f"linking: true pairs found {tp}, missed {fn}, pseudonyms merging different people {fp}")
+    if "must_not_merge" in man:
+        print(f"same-name different people wrongly merged: {len(wrong)} of {len(man['must_not_merge'])}")
     print(f"TMPDIR leftovers: {len(list(run_tmp.rglob('*')))}")
+    print(f"output folder: {out}")
 
 
 if __name__ == "__main__":
