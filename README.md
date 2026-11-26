@@ -12,7 +12,9 @@
 
 *Remove the person. Keep the medicine.*
 
-[**Quick start**](#quick-start) · [How it works](docs/HOW_IT_WORKS.md) · [Results](docs/RESULTS.md) · [Security](docs/SECURITY.md) · [Project brief (PDF)](docs/brief.pdf)
+[**Quick start**](#quick-start) · [How it works](docs/HOW_IT_WORKS.md) · [Results](docs/RESULTS.md) · [Security](docs/SECURITY.md) · [**Project brief (PDF)**](docs/brief.pdf)
+
+### 📄 [Read the 2-page Project Brief (PDF)](docs/brief.pdf)
 
 </div>
 
@@ -34,10 +36,21 @@ files, in English, Hindi and Hinglish. It runs offline, on a normal CPU, with **
 | 🧠 | [`raksha/`](raksha) | the program: `ingest/` (reading), `detect/`, `link/`, `privacy/`, `pseudo/`, `write/`, `security/`, `translit/`, `data/` (name and medical word lists) |
 | ⚙️ | [`config/policy.yaml`](config/policy.yaml) | every privacy setting in one file |
 | 🧾 | [`raksha.toml`](raksha.toml) | the submission file: team name, setup and run commands |
-| 🧪 | [`tests/`](tests) | 70 automatic tests (`pytest -q`) |
-| 🎬 | [`samples/`](samples) | 7 demo files, their cleaned output and an 11-point check script |
-| 🛠️ | [`tools/`](tools) | development helpers: synthetic data, leak scanner, attack simulator |
+| 🧪 | [`tests/`](tests) | 87 automatic tests (`pytest -q`) |
+| 🛠️ | [`tools/`](tools) | development helpers: tough and synthetic test data, leak scanner, attack simulator |
 | 📚 | [`docs/`](docs) | how it works, results, security design and the 2-page brief |
+
+## Documents
+
+| Document | What's in it |
+|---|---|
+| 📄 [Project Brief (2-page PDF)](docs/brief.pdf) | the submission brief: idea, architecture, measured results, trade-offs, limitations |
+| ⚙️ [How it works](docs/HOW_IT_WORKS.md) | each stage in detail: reading, detection, linking, privacy, writing |
+| 📊 [Results](docs/RESULTS.md) | every measured number: practice data, unseen data, the hard test set, attack simulation |
+| 🔒 [Security design](docs/SECURITY.md) | keys, logging, temporary data, what we would do in production |
+| 🎛️ [Privacy policy settings](config/policy.yaml) | age bands, date shifts, k-anonymity target, linking thresholds |
+| 🧾 [Submission file](raksha.toml) | team name, setup and run commands |
+| 🧰 [Team Kit](https://github.com/Reinforce-SST/Secret-Wards-ToolKit) | the organisers' practice data and checkers (`validate_output.py`, `check_dev.py`, `check_submission.py`) |
 
 ## Quick start
 
@@ -46,12 +59,23 @@ pip install -r requirements.txt
 RAKSHA_SECRET=any-secret python main.py --input <input folder> --output <output folder>
 ```
 
-Try it on the included demo (7 small files, 11 automatic checks):
+Check it with the kit's tools (kit cloned next to this repo as `../Secret-Wards-ToolKit`):
 
 ```bash
-bash samples/check_samples.sh          # → Result: 11 passed, 0 failed
+RAKSHA_SECRET=practice python main.py --input ../Secret-Wards-ToolKit/dev/input --output out/practice
+python ../Secret-Wards-ToolKit/validate_output.py --input ../Secret-Wards-ToolKit/dev/input --output out/practice   # CONTRACT OK
+python ../Secret-Wards-ToolKit/check_dev.py --output out/practice                                                    # leaks, medical values, linking
+python ../Secret-Wards-ToolKit/check_submission.py --repo . --run                                                     # READY TO SUBMIT
+```
+
+Test it on data it was not tuned on, and run the tests:
+
+```bash
 pip install -r requirements-dev.txt
-pytest -q                              # → 70 passed
+python tools/make_tough.py --out out/tough_data --seed 3          # 46 hard files: every encoding, hiding place and trap
+python tools/leak_scan.py --data out/tough_data --out out/tough   # leaks, medical values kept, linking
+python tools/attack_sim.py --kit ../Secret-Wards-ToolKit --output out/practice   # re-identification attacks A1-A7
+pytest -q --cov=raksha --cov-report=term-missing
 ```
 
 ## What it does
@@ -97,8 +121,11 @@ Details: [docs/HOW_IT_WORKS.md](docs/HOW_IT_WORKS.md).
 | ⚡ | Run time / memory | **1.3 s / 45 MB** |
 
 On data we did not tune on (every name replaced with invented names, column headers
-renamed) it still leaked nothing and linked with precision 1.00 and recall 0.96. The same
-secret gives byte-identical output; a different secret gives different IDs and dates.
+renamed) it still leaked nothing and linked with precision 1.00 and recall 0.96. On a harder
+generated set (unseen Hinglish headers, ragged rows, names that are English words, IDs in URLs
+and file names, a two-patient FHIR bundle) it leaks 0 of 170 items and links 81 of 81 record
+pairs with no wrong merges. The same secret gives byte-identical output; a different secret
+gives different IDs and dates.
 Details: [docs/RESULTS.md](docs/RESULTS.md).
 
 ## Security
@@ -118,7 +145,10 @@ similarity (`rapidfuzz`).
 
 ## Known limitations
 
-* Names that are also English words (Rose, Karma) are only caught when the context gives them away.
+* Names that are also English words are caught by a nickname list or a following surname
+  (Rose Ekka, Lovely Singh); on their own they rely on context.
+* Shifted birth dates still give away the birth year, and in a small release a diagnosis plus
+  gender, age band and hospital is often unique (simulated targeted attack: 0.55 of raw).
 * A Hindi name with no label or known spelling elsewhere can be missed.
 * XML, PDF and image files are set aside rather than cleaned.
 * With few patients, privacy settings are cautious (20-year age bands, state instead of district).
