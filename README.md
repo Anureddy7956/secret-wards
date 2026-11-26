@@ -12,7 +12,7 @@
 
 *Remove the person. Keep the medicine.*
 
-[**Quick start**](#quick-start) · [How it works](docs/HOW_IT_WORKS.md) · [Results](docs/RESULTS.md) · [Security](docs/SECURITY.md) · [**Project brief (PDF)**](docs/brief.pdf)
+[**Quick start**](#quick-start) · [How it works](#how-it-works) · [Results](#results) · [Security](#security) · [**Project brief (PDF)**](docs/brief.pdf)
 
 ### 📄 [Read the 2-page Project Brief (PDF)](docs/brief.pdf)
 
@@ -32,25 +32,16 @@ files, in English, Hindi and Hinglish. It runs offline, on a normal CPU, with **
 
 | | Path | What it is |
 |---|---|---|
+| 📄 | [`docs/brief.pdf`](docs/brief.pdf) | the 2-page Project Brief |
 | ▶️ | [`main.py`](main.py) | the command-line entry point |
 | 🧠 | [`raksha/`](raksha) | the program: `ingest/` (reading), `detect/`, `link/`, `privacy/`, `pseudo/`, `write/`, `security/`, `translit/`, `data/` (name and medical word lists) |
-| ⚙️ | [`config/policy.yaml`](config/policy.yaml) | every privacy setting in one file |
+| ⚙️ | [`config/policy.yaml`](config/policy.yaml) | every privacy setting in one file: age bands, date shifts, k-anonymity target, linking thresholds |
 | 🧾 | [`raksha.toml`](raksha.toml) | the submission file: team name, setup and run commands |
 | 🧪 | [`tests/`](tests) | 87 automatic tests (`pytest -q`) |
-| 🛠️ | [`tools/`](tools) | development helpers: tough and synthetic test data, leak scanner, attack simulator |
-| 📚 | [`docs/`](docs) | how it works, results, security design and the 2-page brief |
+| 🛠️ | [`tools/`](tools) | test helpers: hard and synthetic test data, leak scanner, attack simulator |
 
-## Documents
-
-| Document | What's in it |
-|---|---|
-| 📄 [Project Brief (2-page PDF)](docs/brief.pdf) | the submission brief: idea, architecture, measured results, trade-offs, limitations |
-| ⚙️ [How it works](docs/HOW_IT_WORKS.md) | each stage in detail: reading, detection, linking, privacy, writing |
-| 📊 [Results](docs/RESULTS.md) | every measured number: practice data, unseen data, the hard test set, attack simulation |
-| 🔒 [Security design](docs/SECURITY.md) | keys, logging, temporary data, what we would do in production |
-| 🎛️ [Privacy policy settings](config/policy.yaml) | age bands, date shifts, k-anonymity target, linking thresholds |
-| 🧾 [Submission file](raksha.toml) | team name, setup and run commands |
-| 🧰 [Team Kit](https://github.com/Reinforce-SST/Secret-Wards-ToolKit) | the organisers' practice data and checkers (`validate_output.py`, `check_dev.py`, `check_submission.py`) |
+The organisers' practice data and checkers are in the
+[Team Kit](https://github.com/Reinforce-SST/Secret-Wards-ToolKit).
 
 ## Quick start
 
@@ -72,8 +63,8 @@ Test it on data it was not tuned on, and run the tests:
 
 ```bash
 pip install -r requirements-dev.txt
-python tools/make_tough.py --out out/tough_data --seed 3          # 46 hard files: every encoding, hiding place and trap
-python tools/leak_scan.py --data out/tough_data --out out/tough   # leaks, medical values kept, linking
+python tools/make_tough.py --out out/tough_data --seed 3                          # 46 hard files: every encoding, hiding place and trap
+python tools/leak_scan.py --data out/tough_data --out out/tough                   # leaks, medical values kept, linking
 python tools/attack_sim.py --kit ../Secret-Wards-ToolKit --output out/practice   # re-identification attacks A1-A7
 pytest -q --cov=raksha --cov-report=term-missing
 ```
@@ -99,44 +90,86 @@ output/
 
 ## How it works
 
+Two passes: pass 1 reads every file and builds patient identities (needed to link records
+across files); pass 2 rewrites each file. Everything stays in memory.
+
 | | Step | What happens |
 |---|---|---|
-| 1 | **Read** | format decided from the contents, not the extension; any encoding; broken files quarantined, never copied |
-| 2 | **Detect** | columns by header or by their values; patterns for phones, Aadhaar, ABHA, PAN, insurance and hospital IDs; context such as `Name:`, `S/o`, `W/o`, `sahab`, `didi`; a medical guard keeps doctors, doses and diseases |
-| 3 | **Link** | blocking, then shared IDs, phone, or name plus a second clue; merges that contradict gender, age or Aadhaar are refused; `मोहम्मद` = `Mohammad` = `Md.` |
-| 4 | **Protect** | HMAC fake IDs from the secret; one secret date shift per patient; age bands; addresses removed; districts raised to state when k-anonymity needs it |
-| 5 | **Write** | personal data replaced everywhere: values, file names, JSON keys, CSV headers, metadata and attachments |
+| 1 | **Read** | format decided from the contents, not the extension; UTF-8, UTF-16, cp1252; broken, empty, binary and unsupported files quarantined with a reason, never copied |
+| 2 | **Detect** | columns by header (`Patient Name`, `Umar`, `मोबाइल`) or, when unfamiliar, by their values; patterns for every Indian phone format, Aadhaar, ABHA, PAN, insurance and hospital IDs (ID formats learned at run time); context such as `Name:`, `नाम:`, `S/o`, `W/o`, `sahab`, `didi`; a medical guard keeps doctors, doses, vitals and diseases |
+| 3 | **Link** | shared UHID / Aadhaar / ABHA links; a shared phone links only if the names fit; the same name needs a second clue and a unique candidate; merges that contradict gender, age, birth date or Aadhaar are refused; `मोहम्मद` = `Mohammad` = `Md.`; too little evidence gives `"patient": null` |
+| 4 | **Protect** | `PSN-` + HMAC-SHA256 fake IDs keyed from the secret; one secret date shift per patient (±15–180 days, so stay lengths stay exact); age bands; house, locality and village removed; district kept or raised to state by a k-anonymity search; diagnoses only one patient has generalised to their ICD-10 chapter |
+| 5 | **Write** | same folders, columns and formats; personal data replaced everywhere: values, file names, JSON keys, CSV headers, metadata, URLs and base64 attachments; CSV, JSON and FHIR R4 stay valid |
 
-Details: [docs/HOW_IT_WORKS.md](docs/HOW_IT_WORKS.md).
+The same input and secret give byte-identical output; a different secret changes every fake
+ID and date shift.
 
-## Results on the practice data
+## What makes it different
+
+* **Cross-script identity.** Latin, Devanagari and Hinglish mentions of one person
+  (`Mohammad Arif`, `Md. Arif`, `मोहम्मद आरिफ`, `Arif sahab`) meet in one key and one fake ID,
+  while two different people with the same name stay apart.
+* **Reads meaning, not just patterns.** `C/O fever` is a complaint, `C/O Ramesh` is a person;
+  `Dr. Ramesh` stays, `W/o Ramesh` goes; `Dolo 650 BD x 5 days`, `K/C/O Parkinson's` and lab
+  values survive.
+* **Measured privacy.** A k-anonymity search picks the generalisation, and every number in
+  this README comes from the kit's checkers or our attack simulator.
+
+## Results
+
+**Practice data** (200 files, 48 patients, `check_dev.py`):
 
 | | Measure | Result |
 |---|---|---|
-| 🛡️ | Personal data left in output | **0 of 3,230** items |
+| 🛡️ | Personal data left in output (overall / Hindi / Hinglish) | **0 of 3,230** items (0% / 0% / 0%) |
 | 🐤 | Planted "canary" names leaked | **0 of 4** |
 | 💊 | Medical values kept | **97.3%** |
-| 🔗 | Patient linking (precision / recall) | **1.00 / 1.00**, no wrong merges |
-| 📦 | Valid FHIR bundles | **19 of 19** |
-| ⚡ | Run time / memory | **1.3 s / 45 MB** |
+| 🔗 | Patient linking (precision / recall / F0.5) | **1.00 / 1.00 / 1.00**, no wrong merges |
+| 📦 | Valid FHIR R4 bundles | **19 of 19** |
+| ⚡ | Run time / memory | **1.2 s / 45 MB** |
 
-On data we did not tune on (every name replaced with invented names, column headers
-renamed) it still leaked nothing and linked with precision 1.00 and recall 0.96. On a harder
-generated set (unseen Hinglish headers, ragged rows, names that are English words, IDs in URLs
-and file names, a two-patient FHIR bundle) it leaks 0 of 170 items and links 81 of 81 record
-pairs with no wrong merges. The same secret gives byte-identical output; a different secret
-gives different IDs and dates.
-Details: [docs/RESULTS.md](docs/RESULTS.md).
+**Data we did not tune on:**
+
+| Test set | Leaked | Linking |
+|---|---|---|
+| practice data with every name invented and headers renamed (`tools/perturb_dev.py`) | 0% | precision 1.00, recall 0.96, no wrong merges |
+| hard generated set, 4 seeds (`tools/make_tough.py`): unseen Hinglish headers, ragged rows, names that are English words, IDs in URLs and file names, a two-patient FHIR bundle | 0 of 170 | 81 of 81 record pairs, no wrong merges |
+
+**Re-identification attacks** (`tools/attack_sim.py`, our approximation of the kit's attacks, raw input vs our output):
+
+| Attack | Raw | Ours |
+|---|---:|---:|
+| A1 direct exposure (patients) | 100% | 0% |
+| A3 record linkage against the voter list | 0.60 | 0.04 |
+| A4 profile re-identification (patients) | 48 of 48 | 4 of 48 |
+| A5 targeted attack with known facts | 1.00 | 0.55 |
+| A6 fake ID reversed to a real ID | – | 0% |
+| A7 two releases linked (different secrets) | – | 0% |
+
+**The privacy–utility trade-off.** Keeping the district leaves most patients alone in their
+(gender, age band, district) group. State plus 20-year bands leaves 10% unique, so on a release
+this small the search picks state and 20-year bands. The 2.7% of medical values not kept are
+this choice: districts raised to state (92 values), diagnoses only one patient has (12) and
+census ward names (6). Every dose, vital, lab value, interval and gender is kept.
 
 ## Security
 
-* Nothing personal is written to disk except the cleaned output; intermediates stay in memory.
-* The secret key is never printed or saved. Separate keys are derived from it for IDs, date
-  shifts, file names and encryption.
-* Logs show only counts and file hashes, never content. Errors show only the error type.
-* Files that cannot be cleaned are listed in the report but never copied.
+*Assume the server will be breached one day.*
 
-Details: [docs/SECURITY.md](docs/SECURITY.md).
+* **Data at rest:** the input is opened read-only and never copied. Raw and intermediate
+  data stay in memory. If spilling is switched on (`security.spill_to_disk`, off by default),
+  each blob is AES-256-GCM encrypted in a private 0700 temp folder wiped at exit.
+* **Keys:** the only secret is `RAKSHA_SECRET`; without it the program stops. Separate keys
+  are derived from it with HKDF for fake IDs, date shifts, file names and encryption, held
+  only in memory, never printed or saved. In production we would keep it in a key-management
+  service, wrap the data keys with it (envelope encryption) and rotate it per release.
+* **Logs and errors:** an allow-list logger prints only counts, file hashes, stage names and
+  error class names; a quiet exception hook keeps names out of tracebacks.
+* **Quarantine:** files that cannot be cleaned are listed in `report.json` by SHA-256 with a
+  reason and never copied, so a half-cleaned file cannot leak.
+
+Tests check that no personal data or secret reaches the output, the report or printed output,
+and that a missing secret fails closed.
 
 ## Models used
 
@@ -147,9 +180,9 @@ similarity (`rapidfuzz`).
 
 * Names that are also English words are caught by a nickname list or a following surname
   (Rose Ekka, Lovely Singh); on their own they rely on context.
-* Shifted birth dates still give away the birth year, and in a small release a diagnosis plus
-  gender, age band and hospital is often unique (simulated targeted attack: 0.55 of raw).
 * A Hindi name with no label or known spelling elsewhere can be missed.
+* Shifted birth dates still give away the birth year, and in a small release a diagnosis plus
+  gender, age band and hospital is often unique (targeted attack 0.55).
 * XML, PDF and image files are set aside rather than cleaned.
 * With few patients, privacy settings are cautious (20-year age bands, state instead of district).
 
