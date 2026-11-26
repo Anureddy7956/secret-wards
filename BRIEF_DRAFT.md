@@ -1,13 +1,13 @@
-# TEAM_NAME_HERE: Raksha, a privacy firewall that understands Indian names, not just patterns
+# MelonWave: Raksha, a privacy firewall that understands Indian names, not just patterns
 
-**Track 3 · Secret Wards** · Members: *(fill in)* · Repo: *(GitHub link)*
+**Track 3 · Secret Wards** · Members: Anusha S, Nandhitha A, Sumanth M, Lokeswar P J · Repo: https://github.com/Anureddy7956/secret-wards
 
 ## 1. In one paragraph
 Raksha turns a chaotic multi-hospital export (CSV, UTF-16 TSV, cp1252, nested JSON, FHIR R4, English / Devanagari /
-Hinglish notes, broken files) into a research release: no personal data, every dose, vital, lab and diagnosis
+Hinglish notes, broken files) into a research release: no personal data, every dose, vital, lab, diagnosis and procedure
 intact, one keyed pseudonym per real patient across files, scripts and hospitals, and quasi-identifiers generalised
 until a voter-list attacker gets little out of them. Its core idea: **read records the way a ward clerk does**.
-Labels, relation markers (`S/o`, `W/o`, `पत्नी`), honorifics (`sahab`, `didi`, `जी`) and cross-script name keys
+Labels, relation markers (`S/o`, `D/o`, `W/o`, `पत्नी`), honorifics (`sahab`, `didi`, `जी`) and cross-script name keys
 (Mohammad = Md. = मोहम्मद) find the person; a medical guard tells `C/O fever` from `C/O Ramesh`; linkage refuses any
 merge that contradicts gender, age, DOB or Aadhaar. No LLM, no trained model, fully offline.
 
@@ -27,12 +27,14 @@ input (read-only) → ingest: content sniffing · decoding · quarantine
   reason code and are never copied. Every file is listed by SHA-256.
 - **Detection:** columns and keys are classified by header semantics in English, Hinglish and Hindi plus value
   statistics when headers are unseen. ID formats are *learned* at run time and then found anywhere (notes, file
-  names, headers, JSON keys, FHIR `meta.source`). Free text: validated patterns (all Indian phone groupings,
-  Aadhaar, ABHA, PAN, PMJAY), EN/HI labels, relation markers (the name before `W/o` is the patient), honorifics,
+  names, CSV headers, JSON keys, export metadata, FHIR `meta.source`; base64 attachments are decoded, cleaned
+  and re-encoded, non-text ones removed). Free text: validated patterns (all Indian phone groupings,
+  Aadhaar, ABHA, PAN, PMJAY / insurance / policy IDs, UHID / MRN / IPD numbers), EN/HI labels, relation markers `S/o D/o W/o H/o C/o` (the name before `W/o` is the patient), honorifics (`ji`, `sahab`, `didi`),
+  initials (`R. K. Sharma`),
   a gazetteer reached from Devanagari by a schwa-aware transliterator, a shape rule for unlisted names (this is how
   the canaries are caught) and propagation of a patient's known names. Text is normalised first (homoglyphs,
   zero-width, `\u`/HTML/%-escapes, Devanagari digits).
-- **Linkage & pseudonyms:** a shared UHID/IPD/Aadhaar/ABHA merges; a shared phone merges only with compatible names
+- **Linkage & pseudonyms:** blocking on shared IDs, phone and name skeletons keeps comparisons small; a shared UHID/IPD/Aadhaar/ABHA merges; a shared phone merges only with compatible names
   (families share phones); same full name across scripts merges only with a second clue (DOB, relative, village +
   age) and a unique candidate; `Meera, W/o Rajan` joins only a unique match. Hard conflicts veto every merge.
   `PSN-` + Crockford base32 of HMAC-SHA256 (HKDF sub-key of `RAKSHA_SECRET`) over an order-independent cluster key.
@@ -40,8 +42,13 @@ input (read-only) → ingest: content sniffing · decoding · quarantine
   exact and there is no global offset for an attacker to recover. One truthful age band per patient. House,
   locality, landmark, village and tehsil are removed; district is kept or lifted to state by a k-anonymity search
   over (gender, band, location). Patient-unique diagnoses and procedures are generalised to their ICD-10 chapter.
-- **Security:** state in memory only; an AES-GCM vault and a 0700 auto-wiped temp dir for any spill; HKDF key
-  separation; an allow-list logger (numbers, hashes, class names only); a quiet excepthook.
+- **Output:** same folders, columns and formats; all text written as UTF-8. **Deterministic:** the same input and
+  secret give byte-identical output; a different secret changes every pseudonym and date shift (both tested).
+- **Security:** input is opened read-only and never copied. Raw and intermediate data stay in memory, so none is
+  written to disk; if spilling is switched on (`security.spill_to_disk`, off by default) each blob is AES-256-GCM
+  encrypted in a 0700 temp dir wiped on exit. All keys are HKDF sub-keys of `RAKSHA_SECRET` (separate keys for IDs,
+  date shifts, file names and the vault), held only in process memory, never printed or saved. An allow-list
+  logger (numbers, hashes, class names only) and a quiet excepthook keep PII out of logs and errors.
 
 ## 4. USP
 - **Cross-script identity:** Latin, Devanagari and Hinglish mentions of one person meet in one canonical key and one
@@ -55,7 +62,7 @@ input (read-only) → ingest: content sniffing · decoding · quarantine
 
 | Measure | Value |
 |---|---|
-| personal data still visible (overall / Hindi / Hinglish) | 0% / 0% / 0% (0 of 3,230; all hiding places 0%); canaries 0 / 4 |
+| personal data leaked (overall / Hindi / Hinglish) | 0% / 0% / 0% (0 of 3,230; all hiding places 0%); canaries 0 / 4 |
 | medical values kept | 97.3% (lost: district → state, 92; patient-unique diagnoses, 12; census ward names, 6) |
 | linking precision / recall / F0.5 | 1.00 / 1.00 / 1.00, 0 false merges |
 | re-identification risk (our estimate) | 4% of patients unique on gender + age band + location; simulated record linkage 0.033 × raw; profile re-identification 0 / 48 (raw 48 / 48) |

@@ -4,7 +4,7 @@ Raksha cleans a folder of hospital records so it can be shared for research.
 It removes personal data, keeps every medical value, and gives each patient one
 fake ID across all files. It runs offline, on a normal CPU, with no AI model.
 
-Built for **Track 3: Secret Wards** (Yugaantar DevForge).
+Built for **Track 3: Secret Wards** (Yugaantar DevForge) by team **MelonWave**: Anusha S, Nandhitha A, Sumanth M, Lokeswar P J.
 
 ## Quick start
 
