@@ -435,7 +435,9 @@ def _propagate(text: str, spans: list[Span], guards, ctx: Context) -> list[Span]
     if not seeds:
         return spans
     out = list(spans)
-    for s, e, t in N.tokens(text):
+    tok_list = N.tokens(text)
+    tok_pos = {t[0]: i for i, t in enumerate(tok_list)}
+    for s, e, t in tok_list:
         if N.is_deva(t):
             c = N.deva_canon(t)
         else:
@@ -460,6 +462,18 @@ def _propagate(text: str, spans: list[Span], guards, ctx: Context) -> list[Span]
         if overlaps(guards, s, e, {"doctor", "org", "eponym", "complaint", "dose"}):
             continue
         e2 = e - 1 if t.endswith(".") else e
+        s2 = s
+        # extend over adjacent capitalised name tokens (surnames, generic parts like Bano / Devi / Kumar)
+        idx = tok_pos.get(s)
+        if idx is not None:
+            j = idx + 1
+            while j < len(tok_list) and text[tok_list[j - 1][1]:tok_list[j][0]] == " ":
+                nt = tok_list[j][2]
+                if N.is_cap(nt) and (N.is_gaz(nt) or canon_token(N.tok_core(nt)) in lex.generic) and not N.is_vocab(nt):
+                    e2 = tok_list[j][1] - (1 if nt.endswith(".") else 0)
+                    j += 1
+                else:
+                    break
         etype = {"patient": "PATIENT_NAME", "relative": "RELATIVE_NAME"}.get(role, "OTHER_NAME")
-        out.append(Span(s, e2, etype, 0.78, t, role, {"src": "propagation"}))
+        out.append(Span(s2, e2, etype, 0.78, text[s2:e2], role, {"src": "propagation"}))
     return out

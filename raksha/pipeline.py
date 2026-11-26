@@ -860,11 +860,11 @@ class Pipeline:
         # TEXT / SOURCE_PATH / unknown
         if numeric:
             return value
-        if cls == "SOURCE_PATH" or re.search(r"[\\/]", sval) and re.search(r"[A-Za-z]:\\|/[^ ]+/", sval):
-            return self._render_path(sval, view, known)
+        if cls == "SOURCE_PATH" or re.search(r"^[A-Za-z]:\\|\\\\|^/[^/ ]+/|[\\/][^\\/ ]+\.\w{2,4}$", sval):
+            return self._render_path(sval, view, known, rec)
         return self._render_value_text(sval, view, known, rec)
 
-    def _render_path(self, sval: str, view, known) -> str:
+    def _render_path(self, sval: str, view, known, rec=None) -> str:
         parts = re.split(r"([\\/])", sval)
         ctx = self._ctx(known)
         toks = {t for n, _ in known for t in n}
@@ -876,7 +876,7 @@ class Pipeline:
                 self.counter["PATH_COMPONENT"] += 1
                 out.append("[REDACTED]")
             else:
-                out.append(p)
+                out.append(self._render_value_text(p, view, known, rec))
         return "".join(out)
 
     def _render_csv(self, d: Doc) -> str:
