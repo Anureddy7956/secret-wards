@@ -21,8 +21,14 @@ def band_for(ages: list[int], width: int, top: int) -> tuple[int, int | None]:
             if s <= lo_a and hi_a <= s + w - 1:
                 candidates.append(s)
             s += step
+        aligned = [c for c in candidates if c % w == 0]
+        if aligned:
+            best = aligned[0]
+            if best + w - 1 >= top:
+                return (best, None) if best >= top else (best, best + w - 1)
+            return (best, best + w - 1)
         if candidates:
-            # prefer the band whose centre is closest to the observed ages' centre
+            # straddles an aligned boundary: use the half-step band closest to the observed ages
             mid = (lo_a + hi_a) / 2
             best = min(candidates, key=lambda c: (abs(c + (w - 1) / 2 - mid), c))
             if best + w - 1 >= top:

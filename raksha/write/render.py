@@ -107,7 +107,12 @@ def render_text(text: str, spans, view: RecordView, shift_dates: bool = True) ->
             m = re.match(r"(?i)(Distt?\.?|District|Zila|Jila|जिला|ज़िला|जनपद)\s*[:\-]?\s*", raw)
             name = raw[m.end():] if m else raw
             gen = view.district_text(name)
-            rep = (m.group(0) + gen) if (m and gen == name) else ("[DISTRICT]" if gen == "[DISTRICT]" else gen)
+            if m and gen == name:
+                rep = raw
+            elif m:
+                rep = m.group(0) + gen if gen != "[DISTRICT]" else "[DISTRICT]"
+            else:
+                rep = gen if not raw.isupper() else gen.upper()
         elif t == "PIN":
             rep = view.pin_text(raw)
         else:

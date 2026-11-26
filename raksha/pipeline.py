@@ -569,13 +569,19 @@ class Pipeline:
             elif d.votes[1] > d.votes[0]:
                 d.order = "mdy"
             else:
-                tot = [0, 0]
-                for k in d.keys:
-                    kv = key_votes.get(k)
-                    if kv:
-                        tot[0] += kv[0]
-                        tot[1] += kv[1]
-                d.order = "mdy" if tot[1] > tot[0] else ("dmy" if tot[0] > tot[1] else default)
+                # most specific source key with a decisive majority wins: ID format > header > file prefix
+                d.order = default
+                for kind in ("shape:", "head:", "prefix:"):
+                    tot = [0, 0]
+                    for k in d.keys:
+                        if k.startswith(kind):
+                            kv = key_votes.get(k)
+                            if kv:
+                                tot[0] += kv[0]
+                                tot[1] += kv[1]
+                    if tot[0] != tot[1]:
+                        d.order = "mdy" if tot[1] > tot[0] else "dmy"
+                        break
         years = Counter()
         for d in live:
             for rec in d.records:
@@ -839,6 +845,9 @@ class Pipeline:
         if cls == "DATE_META":
             return value
         if cls in ("GENDER", "RELATION", "DOCTOR", "KEEP", "STATE"):
+            if cls == "KEEP" and isinstance(value, str) and rec is not None and getattr(self, "_leaf_key", None) not in (
+                    "id", "fullUrl", "reference", "system", "url", "profile"):
+                return rare_values.apply(self, rec, value)
             return value
         if cls == "BASE64":
             t = maybe_b64_text(sval)
@@ -1067,6 +1076,7 @@ def _rebuild(obj, path, pipe: Pipeline, d: Doc, ctx_for, id_map):
                 obj = obj.replace(old, new)
         return obj
     rec, view, known, first = ctx_for(path)
+    pipe._leaf_key = path[-1] if path else None
     if cls == "IDENT" and d.fmt == "fhir":
         cls = pipe._fhir_ident_cls(d.parsed, path)
     if cls == "TEXT" and isinstance(obj, str) and path and path[-1] == "div":

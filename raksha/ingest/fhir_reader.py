@@ -26,6 +26,8 @@ def fhir_class(resource_type: str | None, rpath: tuple, resource: dict | None = 
     if last == "data" and "attachment" in rpath:
         return "BASE64"
     if resource_type in KEEP_RESOURCES:
+        if rpath[:1] == ("address",) and last in ("city", "district"):
+            return "DISTRICT"  # hospital location: generalised with the release's location level
         return "DATE" if last in DATE_KEYS else "KEEP"
     if last == "display" and len(rpath) >= 2 and rpath[-2] in ("subject", "patient", "beneficiary"):
         return "PATIENT_NAME"

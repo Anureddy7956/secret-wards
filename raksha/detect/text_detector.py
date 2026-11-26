@@ -144,6 +144,12 @@ def detect(text: str, ctx: Context) -> list[Span]:
             continue
         _add(spans, m.start(), _trim_place(text, m.start(), m.end()), "LOCALITY", 0.75, value=frag)
 
+    # 6b. bare district names (hospital headers, referrals): generalised with the location level
+    for m in _district_rx().finditer(text):
+        w = m.group(0)
+        if w[:1].isupper() or N.is_deva(w):
+            _add(spans, m.start(), m.end(), "DISTRICT", 0.6, value=w, src="gazetteer")
+
     # 7. gazetteer + shape names ----------------------------------------------------------------
     spans.extend(_scan_names(text, guards))
 
@@ -171,6 +177,24 @@ def detect(text: str, ctx: Context) -> list[Span]:
 
 _REL_BEFORE_RX = re.compile(r"(?:पिता|पति|माता|अभिभावक|पिता/पति)\s*का\s*$|(?i:(?:father|husband|mother|guardian|"
                             r"spouse|relative|attendant)(?:'s)?\s*$|(?:pita|pati|mata)\s*ka\s*$)")
+
+
+_DRX = None
+
+
+def _district_rx():
+    global _DRX
+    if _DRX is None:
+        lex = get_lexicon()
+        names = sorted(set(lex.district_state) | set(lex.deva_district), key=len, reverse=True)
+        alts = []
+        for n in names:
+            if any("\u0900" <= c <= "\u097f" for c in n):
+                alts.append(re.escape(n))
+            else:
+                alts.append(r"\s+".join(re.escape(x) for x in n.split()))
+        _DRX = re.compile(r"(?<![\w\u0900-\u097F])(?:" + "|".join(alts) + r")(?![\w\u0900-\u097F])", re.I)
+    return _DRX
 
 
 def _address_context(text: str, pos: int) -> bool:
