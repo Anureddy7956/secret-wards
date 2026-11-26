@@ -11,6 +11,8 @@ Each guard is (start, end, kind).
 """
 from __future__ import annotations
 
+from bisect import bisect_left, bisect_right
+
 import re
 
 from .lexicon import get_lexicon
@@ -94,7 +96,7 @@ def find_guards(text: str) -> list[tuple[int, int, str]]:
     for m in re.finditer(r"(?:[A-Z][A-Z\-]*\s+){0,4}(?:HOSPITAL|SADAN|CLINIC|LABS?|PATHOLOGY|DIAGNOSTICS|CENTRE|CENTER|"
                          r"NURSING HOME|INSTITUTE|TRUST)\b", text):
         g.append((m.start(), m.end(), "org"))
-    return g
+    return Guards(g)
 
 
 def is_clinical_word(rest: str) -> bool:
@@ -123,15 +125,40 @@ def is_clinical_word(rest: str) -> bool:
     return lex.is_vocab(w)
 
 
+class Guards(list):
+    """Guards sorted by start, with the furthest end seen so far, so a lookup only visits the guards that can
+    touch the queried span (a long note has thousands of dose / vital guards; a linear scan per name token
+    made detection quadratic in the file size)."""
+
+    def __init__(self, items=()):
+        super().__init__(sorted(items))
+        self.starts = [a for a, _, _ in self]
+        self.reach = []
+        m = -1
+        for _, b, _ in self:
+            m = max(m, b)
+            self.reach.append(m)
+
+
 def inside(guards, s: int, e: int, kinds=None) -> bool:
-    for a, b, k in guards:
-        if a <= s and e <= b and (kinds is None or k in kinds):
+    if not isinstance(guards, Guards):
+        guards = Guards(guards)
+    j = bisect_right(guards.starts, s) - 1          # guards starting at or before s
+    while j >= 0 and guards.reach[j] >= e:          # nothing earlier reaches e: stop
+        a, b, k = guards[j]
+        if e <= b and (kinds is None or k in kinds):
             return True
+        j -= 1
     return False
 
 
 def overlaps(guards, s: int, e: int, kinds=None) -> bool:
-    for a, b, k in guards:
-        if s < b and a < e and (kinds is None or k in kinds):
+    if not isinstance(guards, Guards):
+        guards = Guards(guards)
+    j = bisect_left(guards.starts, e) - 1           # guards starting before e
+    while j >= 0 and guards.reach[j] > s:           # nothing earlier reaches past s: stop
+        a, b, k = guards[j]
+        if s < b and (kinds is None or k in kinds):
             return True
+        j -= 1
     return False

@@ -37,7 +37,7 @@ files, in English, Hindi and Hinglish. It runs offline, on a normal CPU, with **
 | 🧠 | [`raksha/`](raksha) | the program: `ingest/` (reading), `detect/`, `link/`, `privacy/`, `pseudo/`, `write/`, `security/`, `translit/`, `data/` (name and medical word lists) |
 | ⚙️ | [`config/policy.yaml`](config/policy.yaml) | every privacy setting in one file: age bands, date shifts, k-anonymity target, linking thresholds |
 | 🧾 | [`raksha.toml`](raksha.toml) | the submission file: team name, setup and run commands |
-| 🧪 | [`tests/`](tests) | 87 automatic tests (`pytest -q`) |
+| 🧪 | [`tests/`](tests) | 88 automatic tests (`pytest -q`) |
 | 🛠️ | [`tools/`](tools) | test helpers: hard and synthetic test data, leak scanner, attack simulator |
 
 The organisers' practice data and checkers are in the

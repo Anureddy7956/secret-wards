@@ -129,3 +129,20 @@ def test_safe_log_drops_free_text(capsys):
     log("file_error", sha="abc123def456", stage="detect", exc="Mohammad Arif 9839011223")
     err = capsys.readouterr().err
     assert "Arif" not in err and "9839011223" not in err and "abc123def456" in err
+
+
+def test_guard_lookup_matches_linear_scan():
+    """The sorted guard lookup (fast on long notes) must answer exactly like a plain scan."""
+    import random
+    from raksha.detect.medical_guard import Guards, inside, overlaps
+    r = random.Random(7)
+    for _ in range(500):
+        g = [(a, a + r.randint(0, 60), r.choice(["dose", "vital", "doctor", "complaint"]))
+             for a in (r.randint(0, 200) for _ in range(r.randint(0, 20)))]
+        G = Guards(g)
+        for _ in range(20):
+            s = r.randint(0, 260)
+            e = s + r.randint(0, 30)
+            k = r.choice([None, {"dose"}, {"doctor", "complaint"}])
+            assert inside(G, s, e, k) == any(a <= s and e <= b and (k is None or kk in k) for a, b, kk in g)
+            assert overlaps(G, s, e, k) == any(s < b and a < e and (k is None or kk in k) for a, b, kk in g)
