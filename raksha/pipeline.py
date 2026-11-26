@@ -1085,17 +1085,26 @@ def _rebuild(obj, path, pipe: Pipeline, d: Doc, ctx_for, id_map):
 
 
 def _clean_key(k, path, pipe: Pipeline, d: Doc, ctx_for):
+    """A JSON key that holds PII (a name, UHID, phone...) is replaced by the patient's pseudonym or a keyed tag."""
     if not isinstance(k, str) or len(k) < 3:
         return k
-    spans = detect(k.replace("_", " "), pipe._ctx())
+    try:
+        _, _, known, _ = ctx_for(path)
+    except Exception:  # noqa: BLE001
+        known = []
+    from .detect import names as _N
+    spans = detect(k.replace("_", " "), pipe._ctx(known))
     pii = [s for s in spans if (s.etype in NAME_TYPES and s.conf >= 0.65) or s.etype in
            ("MRN", "PHONE", "AADHAAR", "EMAIL", "PAN", "ABHA_NUMBER")]
-    if not pii:
+    gaz_hit = any(_N.is_cap(t) and _N.is_first_gaz(t) and not _N.is_vocab(t)
+                  for t in re.split(r"[_\s\-]+", k) if len(t) > 2)
+    if not pii and not gaz_hit:
         return k
     pipe.counter["KEY"] += 1
+    flat = k.replace("_", " ")
     for s in spans:
         if s.etype == "MRN":
-            cid = pipe.id_to_cluster.get(norm_id(k.replace("_", " ")[s.start:s.end]))
+            cid = pipe.id_to_cluster.get(norm_id(flat[s.start:s.end]))
             if cid is not None:
                 return pipe.cluster_pid[cid]
     tag = hmac.new(pipe.keys.misc, ("key|" + k).encode("utf-8"), hashlib.sha256).hexdigest()[:8]

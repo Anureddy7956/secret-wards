@@ -79,7 +79,7 @@ GENDER_BY_HONORIFIC = {"sahab": "M", "saheb": "M", "sahib": "M", "saab": "M", "b
                        "kumari": "F", "mrs": "F", "ms": "F", "miss": "F", "mr": "M", "master": "M"}
 
 # Address grammar ------------------------------------------------------------------------------
-_W = r"[A-Za-z][A-Za-z.'’]*"
+_W = r"(?-i:[A-Z])[A-Za-z.'’]*"
 _D = r"[ऀ-ॿ]+"
 HOUSE_RX = re.compile(
     r"(?:\bH\.?\s?No\.?|\bHouse(?:\s*No\.?)?|\bMakan(?:\s*No\.?)?|\bPlot(?:\s*No\.?)?|\bFlat(?:\s*No\.?)?|\bQtr\.?(?:\s*No\.?)?|"
@@ -92,7 +92,7 @@ LANDMARK_RX = re.compile(
     r"\b(?:near|opp\.?|opposite|behind|beside|in\s+front\s+of|next\s+to)\s+" + _W + r"(?:\s+" + _W + r"){0,4}"
     r"|" + _D + r"(?:\s+" + _D + r"){0,3}\s+के\s+(?:पास|पीछे|सामने|निकट)", re.I)
 VILLAGE_RX = re.compile(
-    r"\b(?:Vill(?:age)?|Gram|Gaon|Grm)\.?\s*[:\-]?\s*" + _W + r"(?:\s+" + _W + r"){0,2}"
+    r"\b(?:Vill(?:age)?|Gram|Gaon|Grm)(?:\.\s*|\s*:\s*|\s+)" + _W + r"(?:\s+" + _W + r"){0,2}"
     r"|(?:ग्राम|गांव|गाँव)\s*[:\-]?\s*" + _D + r"(?:\s+" + _D + r"){0,2}", re.I)
 TEHSIL_RX = re.compile(r"\b(?:Tehsil|Teh\.?|Tahsil|Taluka|Block)\s*[:\-]?\s*" + _W + r"(?:\s+" + _W + r")?"
                        r"|(?:तहसील|ब्लॉक)\s*[:\-]?\s*" + _D, re.I)
