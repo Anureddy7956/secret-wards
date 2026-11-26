@@ -989,7 +989,8 @@ class Pipeline:
         for i, p in enumerate(parts):
             if component_has_pii(p, ctx, known):
                 self.counter["FILENAME"] += 1
-                out.append(safe_name(p, self.keys.misc, "/".join(parts[:i + 1])))
+                out.append(safe_name(p, self.keys.misc, "/".join(parts[:i + 1]), self._ctx(
+                    [((t,), "patient") for t in sorted(known)])))
             else:
                 out.append(p)
         return "/".join(out)
@@ -1093,8 +1094,15 @@ def _clean_key(k, path, pipe: Pipeline, d: Doc, ctx_for):
     except Exception:  # noqa: BLE001
         known = []
     from .detect import names as _N
+    if re.fullmatch(r"[a-z][a-z0-9_]*", k) and not any(c.isdigit() for c in k):
+        # ordinary schema key: only a known / gazetteer name token inside it can make it PII
+        toks = [t for t in k.split("_") if len(t) > 2]
+        known_toks = {t for n, _ in known for t in n}
+        from .translit.canonical import canon_token as _ct
+        if not any(_ct(t) in known_toks or (_N.is_first_gaz(t) and not _N.is_vocab(t)) for t in toks):
+            return k
     spans = detect(k.replace("_", " "), pipe._ctx(known))
-    pii = [s for s in spans if (s.etype in NAME_TYPES and s.conf >= 0.65) or s.etype in
+    pii = [s for s in spans if (s.etype in NAME_TYPES and s.conf >= 0.55) or s.etype in
            ("MRN", "PHONE", "AADHAAR", "EMAIL", "PAN", "ABHA_NUMBER")]
     gaz_hit = any(_N.is_cap(t) and _N.is_first_gaz(t) and not _N.is_vocab(t)
                   for t in re.split(r"[_\s\-]+", k) if len(t) > 2)

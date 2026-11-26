@@ -33,7 +33,7 @@ def component_has_pii(name: str, ctx: Context, known_tokens: set) -> bool:
     return False
 
 
-def safe_name(name: str, key: bytes, rel: str) -> str:
+def safe_name(name: str, key: bytes, rel: str, ctx: Context | None = None) -> str:
     """Keep only ordinary vocabulary words and short numbers from the old stem, then add a keyed tag."""
     from ..detect.lexicon import get_lexicon
     lex = get_lexicon()
@@ -43,9 +43,16 @@ def safe_name(name: str, key: bytes, rel: str) -> str:
         ext = "." + ext
     else:
         stem = name
+    words = [w for w in re.split(r"[_\s.()\[\]]+", stem) if w]
+    banned = set()
+    if ctx is not None:
+        titled = " ".join(w.capitalize() if w.isalpha() else w for w in words)
+        for sp in detect(titled, ctx):
+            if sp.etype in PII_TYPES:
+                banned.update(titled[sp.start:sp.end].split())
     keep = []
-    for w in re.split(r"[_\s.()\[\]]+", stem):
-        if not w:
+    for w in words:
+        if w.capitalize() in banned or w in banned:
             continue
         if re.fullmatch(r"\d{1,5}", w):
             keep.append(w)

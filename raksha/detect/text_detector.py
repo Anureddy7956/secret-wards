@@ -3,7 +3,7 @@ vetoed by the medical guard, merged into non-overlapping spans."""
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 
 from ..privacy.dates import find_dates
 from ..translit.canonical import canon_token, token_match
@@ -44,20 +44,45 @@ def _add(spans, s, e, etype, conf, role="patient", value="", **meta):
 
 
 def _label_value_end(text: str, pos: int) -> int:
-    """End of a label's value: line end, double space or next 'Label:' pattern."""
+    """End of a label's value: line end, double space, or a following ', ph / mob / age ...' field."""
     nl = text.find("\n", pos)
     end = len(text) if nl < 0 else nl
-    m = re.search(r"\s{2,}|\t", text[pos:end])
+    m = re.search(r"\s{2,}|\t|[,;]\s*(?=(?:ph|phone|mob|mobile|tel|contact|age|sex|dob|uhid|aadhaa?r)\b)", text[pos:end], re.I)
     if m and m.start() > 0:
         end = pos + m.start()
     return end
 
 
+_CACHE: dict = {}
+
+
 def detect(text: str, ctx: Context) -> list[Span]:
-    if not text or not text.strip():
+    """Base detection is cached per (text, learned state); propagation of record-specific names runs per call."""
+    if not text or not text.strip() or len(text.strip()) < 2:
         return []
+    key = (text, id(ctx.learned), len(ctx.learned.id_values))
+    hit = _CACHE.get(key)
+    if hit is None:
+        guards = find_guards(text)
+        base = _detect_base(text, ctx, guards)
+        if len(_CACHE) > 200000:
+            _CACHE.clear()
+        _CACHE[key] = hit = (guards, base)
+    guards, base = hit
+    spans = [replace(s, meta=dict(s.meta)) for s in base]
+    spans = _propagate(text, spans, guards, ctx)
+    out = resolve(spans)
+    out = merge_adjacent_names(text, out)
+    for sp in out:
+        if sp.etype in NAME_TYPES:
+            m = re.search(r"(?:\b(?:Mohd|Md|Mohammad|Mohammed|Muhammad)\.?\s|मोहम्मद\s|मो\.\s?)$", text[max(0, sp.start - 12):sp.start])
+            if m:
+                sp.start -= len(m.group(0))
+    return out
+
+
+def _detect_base(text: str, ctx: Context, guards) -> list[Span]:
     lex = get_lexicon()
-    guards = find_guards(text)
     spans: list[Span] = []
 
     # 1. direct identifier patterns ------------------------------------------------------------
@@ -162,17 +187,7 @@ def detect(text: str, ctx: Context) -> list[Span]:
             if age <= 120:
                 _add(spans, m.start(1), m.end(1), "AGE", 0.8, value=str(age))
 
-    # 9. propagation of known / detected name tokens -------------------------------------------
-    spans = _propagate(text, spans, guards, ctx)
-
-    out = resolve(spans)
-    out = merge_adjacent_names(text, out)
-    for sp in out:
-        if sp.etype in NAME_TYPES:
-            m = re.search(r"(?:\b(?:Mohd|Md|Mohammad|Mohammed|Muhammad)\.?\s|मोहम्मद\s|मो\.\s?)$", text[max(0, sp.start - 12):sp.start])
-            if m:
-                sp.start -= len(m.group(0))
-    return out
+    return spans
 
 
 _REL_BEFORE_RX = re.compile(r"(?:पिता|पति|माता|अभिभावक|पिता/पति)\s*का\s*$|(?i:(?:father|husband|mother|guardian|"

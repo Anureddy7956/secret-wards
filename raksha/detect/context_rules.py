@@ -12,11 +12,15 @@ LABELS = [
      r"Name)" + SEPC, "PATIENT_NAME", "patient", "name", 0.95),
     (r"(?:मरीज़?\s*का\s*नाम|रोगी\s*का\s*नाम|नाम|मरीज़?)\s*[:\-–]\s*", "PATIENT_NAME", "patient", "name", 0.95),
     (r"\bReport\s+of\s+", "PATIENT_NAME", "patient", "name", 0.85),
+    (r"(?<![A-Za-z])(?:Pt|PT|Patient)\.?\s+(?=(?-i:[A-Z])[a-z]+(?:\s+(?-i:[A-Z])[a-z]+)?\s*(?:\(|,|\d|$))", "PATIENT_NAME",
+     "patient", "name", 0.85),
     (r"\b(?:Referral|Referred\s+patient|Pt\s+name)\s*:\s*", "PATIENT_NAME", "patient", "name", 0.8),
     (r"\b(?:Attendant(?:'s)?(?:\s*Name)?|Father'?s?\s*Name|Husband'?s?\s*Name|Mother'?s?\s*Name|Guardian(?:'s)?(?:\s*Name)?|"
      r"Spouse(?:'s)?(?:\s*Name)?|Next\s+of\s+Kin|NOK|Relative(?:'s)?(?:\s*Name)?|Informant|Escort|Brought\s+by|"
      r"Pita(?:\s*ka)?\s*Naam|Pati(?:\s*ka)?\s*Naam|Pita/Pati\s*ka\s*Naam|Kin)" + SEPC,
      "RELATIVE_NAME", "relative", "name", 0.95),
+    (r"\b(?:Husband|Father|Mother|Wife|Spouse|Guardian|Son|Daughter)(?:\s*/\s*(?:Husband|Father|Mother|Wife|"
+     r"Guardian|Spouse))+(?:'s)?(?:\s*Name)?" + SEPC, "RELATIVE_NAME", "relative", "name", 0.95),
     (r"(?:पिता\s*का\s*नाम|पति\s*का\s*नाम|माता\s*का\s*नाम|अभिभावक(?:\s*का\s*नाम)?|पिता/पति\s*का\s*नाम)\s*[:\-–]\s*",
      "RELATIVE_NAME", "relative", "name", 0.95),
     (r"\b(?:called\s+by|witnessed\s+by|raised\s+by|signed\s+by|informed\s+by|reported\s+by|accompanied\s+by|"
@@ -36,6 +40,7 @@ LABELS = [
     (r"\b(?:Address|Addr|Add\.|Residence|Resident\s+of|R/o|Pata|Permanent\s+Address|Present\s+Address)" + SEPC,
      "ADDRESS", "patient", "address", 0.95),
     (r"(?:पता|निवास)\s*[:\-–]\s*", "ADDRESS", "patient", "address", 0.95),
+    (r"\b(?:R/o|R/O|r/o|Resident\s+of|Residing\s+at)\.?\s+(?=[A-Z\u0900-\u097F])", "ADDRESS", "patient", "address", 0.9),
     (r"\b(?:Village|Vill|Gram|Gaon|Mohalla|Locality)\.?\s*[:\-–]\s*", "VILLAGE", "patient", "village", 0.9),
     (r"(?:ग्राम|गांव|गाँव|मोहल्ला)\s*[:\-–]\s*", "VILLAGE", "patient", "village", 0.9),
     (r"\b(?:Aadhaa?r|Adhar|UID)(?:\s*(?:No|Number|Card))?\.?" + OPT, "AADHAAR", "patient", "aadhaar", 0.9),

@@ -111,6 +111,11 @@ def classify_header(path: list[str]) -> tuple[str | None, str | None]:
             "cr no", "hospital uhid", "hospital no", "admission no", "ipd no", "card no", "patient no", "regn no",
             "patient_ref", "hospital id", "mr number", "file no"):
         return "MRN", order
+    if _has(toks, {"id", "no", "number", "num", "nbr"}) and _has(toks, {
+            "reg", "regn", "registration", "hospital", "hosp", "patient", "pt", "mr", "mrd", "cr", "ipd", "ip", "uh",
+            "card", "file", "case", "admission", "adm", "opd_reg", "inpatient"}) and not _has(toks, {
+            "visit", "bill", "invoice", "sample", "lab", "test", "order", "claim", "receipt", "token", "bed"}):
+        return "MRN", order
     if _has(toks, {"pin", "pincode", "zip", "zipcode", "postal", "postalcode", "postcode"}):
         return "PIN", order
     if _has(toks, {"tehsil", "taluk", "taluka", "tahsil", "block", "mandal"}):

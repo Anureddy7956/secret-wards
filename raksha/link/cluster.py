@@ -49,7 +49,7 @@ class Cluster:
         self.hospitals |= o.hospitals
 
 
-def conflict(a: Cluster, b: Cluster, gap: int, jw: float) -> bool:
+def conflict(a: Cluster, b: Cluster, gap: int, jw: float, check_names: bool = True) -> bool:
     if a.genders and b.genders and not (a.genders & b.genders):
         return True
     if len(a.genders) > 1 or len(b.genders) > 1:
@@ -64,6 +64,8 @@ def conflict(a: Cluster, b: Cluster, gap: int, jw: float) -> bool:
         vb = {v for k, v in b.ids if k == t}
         if va and vb and not (va & vb):
             return True
+    if not check_names:
+        return False
     if not C.names_compatible(a.names, b.names, jw):
         return True
     # a fragment's first name must agree with the other side's names
@@ -114,12 +116,12 @@ def link(identities: list[Identity], policy) -> list[int | None]:
             x = parent[x]
         return x
 
-    def union(x, y) -> bool:
+    def union(x, y, check_names: bool = True) -> bool:
         rx, ry = find(x), find(y)
         if rx == ry:
             return True
         a, b = clusters[rx], clusters[ry]
-        if conflict(a, b, gap, jw):
+        if conflict(a, b, gap, jw, check_names):
             return False
         keep, drop = (rx, ry) if rx < ry else (ry, rx)
         clusters[keep].absorb(clusters[drop])
@@ -134,8 +136,11 @@ def link(identities: list[Identity], policy) -> list[int | None]:
             index[(ID_ORDER.get(t, 9), t, v)].append(i)
     for key in sorted(index):
         members = index[key]
+        # an identifier that belongs to one person (UHID, Aadhaar, ABHA...) links despite spelling drift in names;
+        # a phone can be shared inside a family, so phone links also need compatible names
+        names_needed = key[1] == "PHONE"
         for j in members[1:]:
-            union(members[0], j)
+            union(members[0], j, names_needed)
 
     # 2. full-name + corroboration (blocking on name skeletons)
     for _round in range(2):

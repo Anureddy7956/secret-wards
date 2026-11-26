@@ -44,6 +44,18 @@ ASHA_RX = re.compile(r"\bASHA\b(?=\s+(?:worker|workers|karyakarta|karyakarti|sah
 ICD_PAREN_RX = re.compile(r"\(\s*[A-TV-Z]\d{2}(?:\.\d{1,2})?\s*\)")
 
 
+_ORG = None
+
+
+def _org_rx():
+    global _ORG
+    if _ORG is None:
+        lex = get_lexicon()
+        _ORG = re.compile(r"(?:[A-Z][A-Za-z\-]*\s+){0,4}(?:" + "|".join(sorted(
+            (re.escape(w.capitalize()) for w in lex.org_words if len(w) > 2), key=len, reverse=True)) + r")\b")
+    return _ORG
+
+
 def find_guards(text: str) -> list[tuple[int, int, str]]:
     lex = get_lexicon()
     g: list[tuple[int, int, str]] = []
@@ -77,8 +89,7 @@ def find_guards(text: str) -> list[tuple[int, int, str]]:
         if m.group(1).lower() in lex.drugs:
             g.append((m.start(), m.end(), "dose"))
     # organisation names: Titlecase run ending with an org word
-    for m in re.finditer(r"(?:[A-Z][A-Za-z\-]*\s+){0,4}(?:" + "|".join(sorted(
-            (re.escape(w.capitalize()) for w in lex.org_words if len(w) > 2), key=len, reverse=True)) + r")\b", text):
+    for m in _org_rx().finditer(text):
         g.append((m.start(), m.end(), "org"))
     for m in re.finditer(r"(?:[A-Z][A-Z\-]*\s+){0,4}(?:HOSPITAL|SADAN|CLINIC|LABS?|PATHOLOGY|DIAGNOSTICS|CENTRE|CENTER|"
                          r"NURSING HOME|INSTITUTE|TRUST)\b", text):
