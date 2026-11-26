@@ -33,6 +33,7 @@ from .ingest.detect_format import sniff
 from .ingest.fhir_reader import fhir_class, ident_class
 from .ingest.json_reader import iter_keys, iter_leaves, pattern_of, pointer_escape
 from .link.cluster import link
+from .link.compare import names_compatible
 from .link.extract_identity import Identity, normalize_gender, village_key
 from .privacy import rare_values
 from .privacy.age_band import band_for
@@ -96,6 +97,34 @@ class Doc:
     reason: str | None = None
     out_rel: str | None = None
     output: str | bytes | None = None
+
+
+_CHECKS = {
+    "PHONE": lambda v: 10 <= len(digits(v)) <= 13 or bool(re.search(r"[Xx*]{4}", v)),
+    "AADHAAR": lambda v: len(digits(v)) == 12 or bool(re.search(r"[Xx*]{4}", v)),
+    "PAN": lambda v: bool(re.fullmatch(r"\s*[A-Z]{5}\d{4}[A-Z]\s*", v)),
+    "EMAIL": lambda v: "@" in v,
+    "PIN": lambda v: bool(re.fullmatch(r"\s*[1-9]\d{2}\s?\d{3}\s*", v)),
+    "AGE": lambda v: bool(re.match(r"\s*\d{1,3}\b", v)),
+    "GENDER": lambda v: v.strip().lower() in CC.GENDER_VALUES,
+    "DOB": lambda v: bool(find_dates(v)),
+}
+
+
+def _positional_ok(row: list, col_cls: list) -> bool:
+    """A ragged row (cells missing at the end, or extra cells at the end) keeps its column meanings when every
+    checkable cell still fits its column (phone looks like a phone, age like an age...). A row whose cells
+    moved (an inserted or dropped cell in the middle) fails the checks and is handled as free text."""
+    passed = 0
+    for ci, cell in enumerate(row[:len(col_cls)]):
+        cls = col_cls[ci][0]
+        chk = _CHECKS.get(cls)
+        if chk is None or not str(cell).strip():
+            continue
+        if not chk(str(cell)):
+            return False
+        passed += 1
+    return passed >= 2
 
 
 class Pipeline:
@@ -213,8 +242,22 @@ class Pipeline:
             except Exception as exc:  # noqa: BLE001
                 log("file_error", sha=d.sha[:12], stage="detect", exc=type(exc).__name__)
                 d.status, d.reason, d.records = "quarantined", "processing_error", []
+        for d in self.docs:
+            if d.status == "sanitized" and len(d.records) == 1 and d.records[0].loc == "doc":
+                self._filename_evidence(d, d.records[0])
         self._infer_orders()
         self._finalize_identities()
+
+    def _filename_evidence(self, d: Doc, rec: Rec):
+        """Phones / IDs in a single-record file's name ('7148988804_report_0047.json') are that patient's."""
+        stem = Path(d.rel).name.rsplit(".", 1)[0]
+        text = re.sub(r"[_]+", " ", stem)
+        for sp in detect(text, self._ctx()):
+            if sp.etype in ("MRN", "PHONE", "AADHAAR", "ABHA_NUMBER", "PAN", "INSURANCE_ID"):
+                v = digits(sp.value or text[sp.start:sp.end])[-10:] if sp.etype == "PHONE" else \
+                    norm_id(sp.value or text[sp.start:sp.end])
+                if v and not (sp.etype == "PHONE" and len(v) < 10):
+                    rec.ident.ids.add((sp.etype, v))
 
     def _ctx(self, known=()):
         return Context(self.learned, known_names=list(known))
@@ -335,7 +378,7 @@ class Pipeline:
         d.keys.append("prefix:" + _prefix(d.rel))
         for i, row in enumerate(body):
             rec = Rec(loc=f"row:{i}", kind="row")
-            aligned = len(row) == n
+            aligned = len(row) == n or _positional_ok(row, d.col_cls)
             name_parts = []
             for ci, cell in enumerate(row):
                 cls, hint = d.col_cls[ci] if aligned and ci < n else ("TEXT", None)
@@ -488,6 +531,10 @@ class Pipeline:
                 if cls in TEXTLIKE and isinstance(v, str) and v.strip():
                     self._text_evidence(rec, _strip_html(v), known)
                     self._vote_text(d, v)
+                    if len(v) >= 24 and " " not in v.strip():
+                        t = maybe_b64_text(v)   # an attachment under an unrecognised key ('scan_b64')
+                        if t:
+                            self._text_evidence(rec, normalize_text(t), known)
                 elif cls == "BASE64" and isinstance(v, str):
                     t = maybe_b64_text(v)
                     if t:
@@ -604,7 +651,12 @@ class Pipeline:
                 ident = rec.ident
                 ident.hospital = hosp
                 mrns = {v for t, v in ident.ids if t == "MRN"}
-                if len(mrns) > 3:  # a list / index of many patients is not one patient's record
+                # a record that holds two different people (a FHIR Bundle with two Patients, a multi-patient
+                # note) must not bridge them into one cluster: it takes no part in linking (patient: null)
+                two_exclusive = any(len({v for t, v in ident.ids if t == k}) > 1 for k in ("AADHAAR", "ABHA_NUMBER"))
+                two_people = len(ident.genders) > 1 and len(ident.names) > 1 and not all(
+                    names_compatible([a], [b]) for a in ident.names for b in ident.names)
+                if len(mrns) > 3 or two_exclusive or two_people:
                     ident.ids = set()
                     ident.names, ident.weak_names, ident.relatives = [], [], []
                 dates = []
@@ -860,6 +912,14 @@ class Pipeline:
         # TEXT / SOURCE_PATH / unknown
         if numeric:
             return value
+        url = re.match(r"(?i)^([a-z][a-z0-9+.\-]*://[^/\s]*/)(\S*)$", sval)
+        if url:
+            # 'http://his.local/UHID/2026/40398': identifiers hide in the URL path (FHIR meta.source etc.);
+            # the path is checked as one string so 'UHID/2026/40398' is seen whole, and any remaining
+            # long digit run in a path segment is removed
+            path = self._render_value_text(url.group(2), view, known, rec)
+            path = re.sub(r"(?<![^/?=&#])\d{5,}(?![^/?=&#])", "[ID]", path)
+            return url.group(1) + path
         if cls == "SOURCE_PATH" or re.search(r"^[A-Za-z]:\\|\\\\|^/[^/ ]+/|[\\/][^\\/ ]+\.\w{2,4}$", sval):
             return self._render_path(sval, view, known, rec)
         return self._render_value_text(sval, view, known, rec)

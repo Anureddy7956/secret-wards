@@ -97,3 +97,36 @@ def test_age_band_contains_true_age():
     out = S("Age/Sex: 47 Yrs/F")
     lo, hi = out.split(":")[1].strip().split(" ")[0].split("-")
     assert int(lo) <= 47 <= int(hi)
+
+
+# --- found by tools/make_tough.py -----------------------------------------------------------------
+
+@pytest.mark.parametrize("text,phone", [("Attendant mob (853) 7215397.", "7215397"),
+                                         ("Call (98765) 43210 after 5", "43210"),
+                                         ("+91 (987) 654-3210", "654-3210")])
+def test_bracketed_phone_redacted(text, phone):
+    assert phone not in S(text)
+
+
+@pytest.mark.parametrize("text,name", [
+    ("Rose Ekka aur Happy Singh dono ka BP 130/80 tha.", "Happy Singh"),
+    ("Rose Ekka aur Happy Singh dono ka BP 130/80 tha.", "Rose Ekka"),
+    ("Golden Kaur ko Insulin 10 units SC HS.", "Golden"),
+    ("Lovely Singh ka sugar 245 mg/dL", "Lovely"),          # not in any list: English word + known surname
+    ("Insulin 10 units SC HS. Pinky Rani 23/F, sickle cell trait.", "Pinky"),
+])
+def test_names_that_are_english_words(text, name):
+    out = S(text)
+    assert name not in out
+
+
+@pytest.mark.parametrize("text", ["Rose water gargles advised; patient is happy.", "Golden hour missed, BP 90/60.",
+                                  "Golden Temple visit last week", "Insulin 10 units SC HS", "Dr. Lovely Singh reviewed."])
+def test_english_words_without_a_name_kept(text):
+    assert S(text) == text
+
+
+def test_identifier_inside_url_path():
+    from raksha.api import sanitize_text
+    out = sanitize_text("source: http://his.local/UHID/2026/40398")
+    assert "40398" not in out and "http://his.local/" in out

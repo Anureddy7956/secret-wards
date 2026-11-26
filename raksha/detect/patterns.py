@@ -15,6 +15,8 @@ PHONE_RX = re.compile(
     r"([6-9]\d(?:[ \-.]?\d){8})"
     r"(?![\d/])(?!\.\d)"
 )
+# mobile written with a bracketed group: '(727) 1900593', '(98765) 43210', '+91 (987) 654-3210'
+PHONE_PAREN_RX = re.compile(r"(?<![\w/])(?:(?:\+|00)\s?91[ \-]?)?\(([6-9]\d{2,4})\)[ \-.]?(\d[\d \-.]{3,8}\d)(?![\d/])")
 LANDLINE_RX = re.compile(r"(?<![\w/])\(?0\d{2,4}\)?[ \-]\d{6,8}(?![\d/])")
 AADHAAR_RX = re.compile(r"(?<![\w\-/.])(\d{4})([ \-]?)(\d{4})\2(\d{4})(?![\w\-/]|\.\d)")
 ABHA_RX = re.compile(r"(?<![\w\-/.])\d{2}([ \-]?)\d{4}\1\d{4}\1\d{4}(?![\w\-/]|\.\d)")
@@ -64,6 +66,10 @@ def find_phones(text: str):
         if len(core) != 10:
             continue
         out.append((m.start(), m.end(), "PHONE", core, 0.9))
+    for m in PHONE_PAREN_RX.finditer(text):
+        core = digits(m.group(1) + m.group(2))
+        if len(core) == 10:
+            out.append((m.start(), m.end(), "PHONE", core, 0.9))
     for m in LANDLINE_RX.finditer(text):
         d = digits(m.group(0))
         if 10 <= len(d) <= 12:

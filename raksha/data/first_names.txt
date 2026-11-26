@@ -24,3 +24,6 @@ vandana varsha vasudev ved veena vijay vijaya vikas vikram vimal vimla vinay vin
 wasim waseem
 yamuna yash yashpal yashoda yogendra yogesh yusuf
 zahid zakir zara zarina zeenat zubair zulfikar
+# common pet / home names used as given names (many are also English words)
+pinky pinki happy golden goldy rose sweety sweetie sunny lucky dolly rinku tinku pappu guddu munna munni bablu babloo
+monu sonu chintu bunty bobby bittu raju lali gudiya chhotu preety

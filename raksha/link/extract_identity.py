@@ -56,7 +56,8 @@ class Identity:
         return out
 
     def has_patient_evidence(self) -> bool:
-        return bool(self.names or any(t == "MRN" for t, _ in self.ids))
+        # hospital IDs, Aadhaar and ABHA belong to exactly one person; a phone may be a relative's
+        return bool(self.names or any(t in ("MRN", "AADHAAR", "ABHA_NUMBER", "ABHA_ADDRESS") for t, _ in self.ids))
 
 
 def normalize_gender(raw: str) -> str | None:

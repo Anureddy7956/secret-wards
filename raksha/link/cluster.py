@@ -78,7 +78,8 @@ def conflict(a: Cluster, b: Cluster, gap: int, jw: float, check_names: bool = Tr
 
 def name_score(a: Cluster, b: Cluster, w: dict, jw: float) -> float:
     s = 0.0
-    if C.any_name_pair(a.names, b.names, C.full_name_agree, jw):
+    full = C.any_name_pair(a.names, b.names, C.full_name_agree, jw)
+    if full:
         s += w.get("full_name_agree", 6)
     else:
         if C.any_name_pair(a.names, b.names, C.first_agree, jw):
@@ -94,6 +95,11 @@ def name_score(a: Cluster, b: Cluster, w: dict, jw: float) -> float:
     yc = C.years_compatible(a.years, b.years, 1)
     if village and yc:
         s += w.get("village_agree", 3) + w.get("age_agree", 2)
+    elif yc and full and bool(a.ids) != bool(b.ids):
+        # an identifier-less note ('Pt. Mary Graves, 45/F') joining the one ID-anchored record with the same full
+        # name and birth year (+-1); two identifier-less same-name records are never linked on age alone.
+        # The uniqueness rule below still applies and gender / DOB / ID conflicts veto.
+        s += w.get("age_agree", 2)
     return s
 
 

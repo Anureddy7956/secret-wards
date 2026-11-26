@@ -129,6 +129,8 @@ def grab_forward(text: str, pos: int, strict: bool = True, max_tokens: int = 4, 
             break
         if after.startswith(":"):
             break
+        if re.match(r"/\s*o\b", text[m.end():m.end() + 4], re.I):
+            break  # 'S/o-W/o': the next relation marker, not a name
         if start is None:
             start = m.start()
         end = m.end()

@@ -17,7 +17,7 @@ def component_has_pii(name: str, ctx: Context, known_tokens: set) -> bool:
     stem = name.rsplit(".", 1)[0] if "." in name else name
     words = re.split(r"[_\s.()\[\]]+", stem)
     text = " ".join(w for w in words if w)
-    # Title-case lower-case tokens so the name rules can see them ('anita_sharma' -> 'Anita Sharma')
+    # Title-case lower-case tokens so the name rules can see them ('ravi_verma' -> 'Ravi Verma')
     titled = " ".join(w.capitalize() if w.isalpha() else w for w in text.split())
     for t in (text, titled):
         for sp in detect(t, ctx):

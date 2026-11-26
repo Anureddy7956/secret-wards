@@ -157,3 +157,63 @@ def test_missing_secret_fails_closed(tmp_path):
     p = subprocess.run([sys.executable, str(ROOT / "main.py"), "--input", str(tmp_path), "--output",
                         str(tmp_path / "o")], env=env, capture_output=True, text=True, cwd=ROOT)
     assert p.returncode != 0
+
+
+# --- found by tools/make_tough.py -----------------------------------------------------------------
+
+def _records(out: Path):
+    return {(r["file"], r["loc"]): r["patient"] for r in map(json.loads, (out / "records.jsonl").read_text().splitlines())}
+
+
+@pytest.fixture(scope="module")
+def tough(tmp_path_factory):
+    base = tmp_path_factory.mktemp("tough")
+    inp = base / "in"
+    (inp / "reg").mkdir(parents=True)
+    # ragged rows (optional last column left out) and unseen Hinglish headers
+    (inp / "reg" / "reg.csv").write_text(
+        "Reg#,Name of the Patient,Gndr,Umar,Janam Tithi,Gram/Mohalla,Pin Code,Contact#,Aadhaar Card No.,Remarks\n"
+        "UHID/2026/71001,Tarini Mahato,F,52,03/02/1974,Kharsawan,833216,+91 98390 11224,4821 7754 9032\n"
+        "UHID/2026/71002,Bhola Rajak,M,38,15/08/1988,Chandil,832401,9123456781,5512 6634 7781,ok\n", encoding="utf-8")
+    (inp / "notes").mkdir()
+    (inp / "notes" / "n1.txt").write_text("Tarini Mahato (52/F) aayi thi, ph 9839011224. Hb 9.8 g/dL.\n", encoding="utf-8")
+    (inp / "notes" / "n2.txt").write_text("Bhola Rajak follow-up. Aadhaar 5512 6634 7781. BP 130/80.\n", encoding="utf-8")
+    (inp / "lab").mkdir()
+    (inp / "lab" / "9123456781_report.json").write_text(json.dumps({"patient": "Bhola Rajak", "hb": "13.1 g/dL"}),
+                                                         encoding="utf-8")
+    (inp / "fhir").mkdir()
+    bundle = {"resourceType": "Bundle", "type": "collection", "entry": [
+        {"resource": {"resourceType": "Patient", "id": "a", "gender": "female", "name": [{"text": "Tarini Mahato"}],
+                      "identifier": [{"system": "https://healthid.ndhm.gov.in", "value": "482177549032"}]}},
+        {"resource": {"resourceType": "Patient", "id": "b", "gender": "male", "name": [{"text": "Bhola Rajak"}],
+                      "identifier": [{"system": "https://healthid.ndhm.gov.in", "value": "551266347781"}]}}]}
+    (inp / "fhir" / "two_patients.json").write_text(json.dumps(bundle), encoding="utf-8")
+    out = base / "out"
+    assert run(inp, out, "tough-secret").returncode == 0
+    return out
+
+
+def test_ragged_rows_keep_column_meaning(tough):
+    import csv
+    rows = list(csv.reader((tough / "sanitized" / "reg" / "reg.csv").read_text(encoding="utf-8").splitlines()))
+    for row in rows[1:]:
+        assert row[3] in ("50-54", "45-54", "40-59", "50-59", "35-39", "30-39", "20-39", "35-44", "30-49") or "-" in row[3]
+        assert "Kharsawan" not in row and "Chandil" not in row and "833216" not in row and "832401" not in row
+
+
+def test_name_with_age_sex_and_aadhaar_notes_link(tough):
+    rec = _records(tough)
+    tarini = rec[("sanitized/reg/reg.csv", "row:0")]
+    bhola = rec[("sanitized/reg/reg.csv", "row:1")]
+    assert tarini and bhola and tarini != bhola
+    notes = {k[0]: v for k, v in rec.items() if k[0].startswith("sanitized/notes/")}
+    assert sorted(notes.values()) == sorted([tarini, bhola])
+    lab = [v for k, v in rec.items() if k[0].startswith("sanitized/lab/")]
+    assert lab == [bhola]                       # phone only in the file name
+
+
+def test_two_patient_bundle_does_not_merge_people(tough):
+    rec = _records(tough)
+    assert rec[("sanitized/reg/reg.csv", "row:0")] != rec[("sanitized/reg/reg.csv", "row:1")]
+    fhir = [v for k, v in rec.items() if k[0].startswith("sanitized/fhir/")]
+    assert fhir == [None]

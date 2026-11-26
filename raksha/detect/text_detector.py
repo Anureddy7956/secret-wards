@@ -12,7 +12,7 @@ from . import names as N
 from .combine import LOCATION_TYPES, NAME_TYPES, Span, merge_adjacent_names, resolve
 from .lexicon import get_lexicon
 from .medical_guard import find_guards, inside, overlaps
-from .patterns import (AADHAAR_RX, ABHA_RX, find_direct_ids, find_id_candidates, id_shape, norm_id, digits,
+from .patterns import (AADHAAR_RX, ABHA_RX, ID_CANDIDATE_RX, find_direct_ids, find_id_candidates, id_shape, norm_id, digits,
                        PAN_RX, EMAIL_RX)
 
 AGE_SLASH_RX = re.compile(r"(?<![\d/.])(\d{1,3})\s*(?:Y|Yr|Yrs|Years?|yrs?|years?|वर्ष|साल)?\.?\s*/\s*"
@@ -78,7 +78,16 @@ def detect(text: str, ctx: Context) -> list[Span]:
             m = re.search(r"(?:\b(?:Mohd|Md|Mohammad|Mohammed|Muhammad)\.?\s|मोहम्मद\s|मो\.\s?)$", text[max(0, sp.start - 12):sp.start])
             if m:
                 sp.start -= len(m.group(0))
+            # an unlabelled name immediately followed by the person's age/sex ('Mohd. Irfan (52/M)',
+            # 'Ramadhar Pasi, 97 Yrs/M') is the record's patient, not a passing mention
+            if sp.etype in ("PATIENT_NAME", "OTHER_NAME") and sp.role == "unknown" and \
+                    _AGE_SEX_AFTER_RX.match(text, sp.end):
+                sp.etype, sp.role = "PATIENT_NAME", "patient"
     return out
+
+
+_AGE_SEX_AFTER_RX = re.compile(
+    r"\s*[,(]?\s*(?:aged\s+)?\d{1,3}\s*(?:y|yrs?|years?|वर्ष)?\.?\s*/\s*(?:M|F|male|female|पुरुष|महिला)\b", re.I)
 
 
 def _detect_base(text: str, ctx: Context, guards) -> list[Span]:
@@ -97,6 +106,17 @@ def _detect_base(text: str, ctx: Context, guards) -> list[Span]:
         if nid in ctx.learned.id_values or id_shape(raw) in ctx.learned.id_shapes:
             if not inside(guards, s, e, {"icd"}):
                 _add(spans, s, e, "MRN", 0.85, value=nid)
+    # identifiers inside a URL path ('http://his.local/UHID/2026/40398'): the ID patterns above skip
+    # tokens glued to '/', so check the path: a learned ID shape spanning segments, or any 5+ digit segment
+    for u in re.finditer(r"(?i)\b[a-z][a-z0-9+.\-]*://[^/\s]+(/[^\s\"'<>]*)", text):
+        ps = u.start(1)
+        path = u.group(1)
+        for m in ID_CANDIDATE_RX.finditer(path.replace("/", " ", 1)):
+            raw = m.group(1)
+            if norm_id(raw) in ctx.learned.id_values or id_shape(raw) in ctx.learned.id_shapes:
+                _add(spans, ps + m.start(1), ps + m.end(1), "MRN", 0.85, value=norm_id(raw))
+        for m in re.finditer(r"(?<=[/=])\d{5,}(?=$|[/?&#])", path):
+            _add(spans, ps + m.start(), ps + m.end(), "MRN", 0.8, value=m.group(0))
     for m in re.finditer(r"(?<![\d])\d{5,}(?![\d])", text):
         if m.group(0) in ctx.learned.id_digit_cores:
             _add(spans, m.start(), m.end(), "MRN", 0.8, value=m.group(0))
@@ -280,7 +300,7 @@ def _apply_label(text, pos, etype, role, mode, conf, spans, guards, ctx):
             seg = text[pos:end]
             info = parse_address(seg)
             _add(spans, pos, end, "ADDRESS", conf, value=seg, src="label", **info)
-            # relatives named inside the address ('C/O Naresh Chauhan, H.No. ...') still count as relatives
+            # relatives named inside the address ('C/O Suresh Verma, H.No. ...') still count as relatives
             for rm in CR.RELATION_RX.finditer(seg):
                 g = N.grab_forward(seg, rm.end(), strict=True)
                 if g:
@@ -376,9 +396,22 @@ def _score_run(text, run, deva, guards, cache) -> list[Span]:
     # split the run at vocabulary words that are not gazetteer names
     cur = []
     groups = []
-    for tok in run:
+    lex = get_lexicon()
+    for k, tok in enumerate(run):
         t = tok[2]
         ok = N.is_gaz(t) or (not N.is_vocab(t) and not N.is_honorific(t) and t.rstrip(".").lower() not in N.LABEL_WORDS)
+        if not ok and not deva and k + 1 < len(run):
+            # an ordinary English word used as a given name right before a known surname ('Lovely Singh',
+            # 'Moon Ekka'); never a medical, label, place or honorific word
+            core = N.tok_core(t)
+            nxt = N.tok_core(run[k + 1][2])
+            low = core.lower()
+            if (len(core) > 2 and lex.is_sur(nxt) and not lex.is_first(nxt) and low not in lex.medical
+                    and low not in lex.district_tokens and low not in lex.org_words and low not in N.LABEL_WORDS
+                    and not N.is_honorific(t) and not core.isupper()):
+                ok = True
+        if ok and overlaps(guards, tok[0], tok[1]):
+            ok = False  # a protected medical token ('SC HS. Pinky Rani') splits the run instead of hiding the name
         if deva:
             ok = N.is_gaz(t) or (t not in N.HINDI_STOP and len(t) > 1)
         if ok:
