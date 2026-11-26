@@ -1,0 +1,5 @@
+# Development / test only (not needed to run the pipeline)
+-r requirements.txt
+pytest==9.2.0
+fhir.resources==8.3.0
+Faker==40.63.0

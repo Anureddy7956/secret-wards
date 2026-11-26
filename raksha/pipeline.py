@@ -842,8 +842,8 @@ class Pipeline:
             if cls == "DOB":
                 self.counter["DOB"] += 1
             return shift_date_value(sval, view, hint)
-        if cls == "DATE_META":
-            return value
+        if cls == "DATE_META":   # FHIR Bundle.timestamp / meta.lastUpdated equal clinical times: shift them too
+            return shift_date_value(sval, view, hint) if not numeric else value
         if cls in ("GENDER", "RELATION", "DOCTOR", "KEEP", "STATE"):
             if cls == "KEEP" and isinstance(value, str) and rec is not None and getattr(self, "_leaf_key", None) not in (
                     "id", "fullUrl", "reference", "system", "url", "profile"):
