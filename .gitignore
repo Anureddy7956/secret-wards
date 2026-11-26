@@ -6,3 +6,9 @@ out*/
 .pytest_cache/
 /tmp_*/
 synthetic_data/
+
+# local working notes, not part of the submission
+NOTES_DATA.md
+PROGRESS.md
+BRIEF_DRAFT.md
+prompt.txt
