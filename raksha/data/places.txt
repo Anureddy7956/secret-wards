@@ -1,0 +1,95 @@
+# district|state  (Uttar Pradesh districts and a few large cities elsewhere). Used to generalise district -> state
+agra|Uttar Pradesh
+aligarh|Uttar Pradesh
+ambedkar nagar|Uttar Pradesh
+amethi|Uttar Pradesh
+amroha|Uttar Pradesh
+auraiya|Uttar Pradesh
+ayodhya|Uttar Pradesh
+azamgarh|Uttar Pradesh
+baghpat|Uttar Pradesh
+bahraich|Uttar Pradesh
+ballia|Uttar Pradesh
+balrampur|Uttar Pradesh
+banda|Uttar Pradesh
+barabanki|Uttar Pradesh
+bareilly|Uttar Pradesh
+basti|Uttar Pradesh
+bhadohi|Uttar Pradesh
+bijnor|Uttar Pradesh
+budaun|Uttar Pradesh
+bulandshahr|Uttar Pradesh
+chandauli|Uttar Pradesh
+chitrakoot|Uttar Pradesh
+deoria|Uttar Pradesh
+etah|Uttar Pradesh
+etawah|Uttar Pradesh
+farrukhabad|Uttar Pradesh
+fatehpur|Uttar Pradesh
+firozabad|Uttar Pradesh
+gautam buddh nagar|Uttar Pradesh
+ghaziabad|Uttar Pradesh
+ghazipur|Uttar Pradesh
+gonda|Uttar Pradesh
+gorakhpur|Uttar Pradesh
+hamirpur|Uttar Pradesh
+hapur|Uttar Pradesh
+hardoi|Uttar Pradesh
+hathras|Uttar Pradesh
+jalaun|Uttar Pradesh
+jaunpur|Uttar Pradesh
+jhansi|Uttar Pradesh
+kannauj|Uttar Pradesh
+kanpur|Uttar Pradesh
+kanpur dehat|Uttar Pradesh
+kanpur nagar|Uttar Pradesh
+kasganj|Uttar Pradesh
+kaushambi|Uttar Pradesh
+kheri|Uttar Pradesh
+lakhimpur kheri|Uttar Pradesh
+kushinagar|Uttar Pradesh
+lalitpur|Uttar Pradesh
+lucknow|Uttar Pradesh
+maharajganj|Uttar Pradesh
+mahoba|Uttar Pradesh
+mainpuri|Uttar Pradesh
+mathura|Uttar Pradesh
+mau|Uttar Pradesh
+meerut|Uttar Pradesh
+mirzapur|Uttar Pradesh
+moradabad|Uttar Pradesh
+muzaffarnagar|Uttar Pradesh
+pilibhit|Uttar Pradesh
+pratapgarh|Uttar Pradesh
+prayagraj|Uttar Pradesh
+allahabad|Uttar Pradesh
+rae bareli|Uttar Pradesh
+raebareli|Uttar Pradesh
+rampur|Uttar Pradesh
+saharanpur|Uttar Pradesh
+sambhal|Uttar Pradesh
+sant kabir nagar|Uttar Pradesh
+shahjahanpur|Uttar Pradesh
+shamli|Uttar Pradesh
+shravasti|Uttar Pradesh
+siddharthnagar|Uttar Pradesh
+sitapur|Uttar Pradesh
+sonbhadra|Uttar Pradesh
+sultanpur|Uttar Pradesh
+unnao|Uttar Pradesh
+varanasi|Uttar Pradesh
+patna|Bihar
+gaya|Bihar
+delhi|Delhi
+new delhi|Delhi
+mumbai|Maharashtra
+pune|Maharashtra
+jaipur|Rajasthan
+bhopal|Madhya Pradesh
+indore|Madhya Pradesh
+kolkata|West Bengal
+chennai|Tamil Nadu
+bengaluru|Karnataka
+bangalore|Karnataka
+hyderabad|Telangana
+dehradun|Uttarakhand

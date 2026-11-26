@@ -1,0 +1,15 @@
+# Devanagari district names -> latin key
+लखनऊ|lucknow
+बाराबंकी|barabanki
+सीतापुर|sitapur
+हरदोई|hardoi
+उन्नाव|unnao
+रायबरेली|rae bareli
+सुल्तानपुर|sultanpur
+बहराइच|bahraich
+कानपुर|kanpur
+अयोध्या|ayodhya
+गोंडा|gonda
+प्रयागराज|prayagraj
+वाराणसी|varanasi
+आगरा|agra

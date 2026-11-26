@@ -1,4 +1,60 @@
-# Your privacy rules. main.py reads simple "key: value" lines.
-age_band_years: 5          # ages become bands like 45-49 (the band must contain the true age)
-date_shift_max_days: 180   # every date of one patient moves by the same secret offset
-min_group_size: 5          # TODO: suppress or widen quasi-identifier combos rarer than this (k-anonymity)
+# Raksha privacy policy. Every privacy / linkage knob lives here.
+# The pipeline reads this file at start-up; values are documented next to each key.
+
+pseudonym:
+  prefix: "PSN-"
+  length: 6                 # Crockford base32 characters; extended deterministically on collision
+
+dates:
+  shift_min_days: 15        # per-patient offset is drawn from [-max, -min] U [min, max] (never 0)
+  shift_max_days: 180
+  default_order: dmy        # fallback when a file gives no evidence of day/month order (Indian default)
+
+age:
+  band_width: 10            # candidate widths are tried from k_anonymity.age_widths; this is the floor
+  top_code: 80              # ages >= this become "80+"
+
+location:
+  # village < tehsil < district < state. The k-anonymity search below picks the level;
+  # 'min_level' is the most specific level ever allowed in the release.
+  min_level: district
+  pin_digits:               # PIN digits kept at each location level (0 = removed)
+    village: 3
+    tehsil: 3
+    district: 3
+    state: 0
+
+k_anonymity:
+  k_target: 5               # every (gender, age band, location) class should hold >= k patients
+  max_violation_share: 0.10 # allowed share of patients below k before we generalise further
+  age_widths: [5, 10, 20]   # widening order for age bands
+  levels: [district, state] # widening order for location
+
+rare_values:
+  enabled: true
+  min_patients: 2           # a diagnosis/procedure held by fewer patients than this is generalised to its ICD chapter
+
+linkage:
+  # Fellegi-Sunter style log-likelihood weights (log2 m/u). Thresholds tuned on dev with precision first.
+  name_jw_threshold: 0.90   # Jaro-Winkler on canonical names counts as agreement above this
+  link_threshold: 8.0       # total weight needed for a name-based (non-ID) link
+  weights:
+    full_name_agree: 6.0
+    first_name_agree: 3.0
+    surname_agree: 2.0
+    dob_agree: 7.0
+    relative_agree: 5.0
+    village_agree: 3.0
+    age_agree: 2.0
+    gender_conflict: -20.0
+    age_conflict: -12.0
+    dob_conflict: -12.0
+    name_conflict: -15.0
+  max_age_gap_years: 2      # birth-year estimates further apart than this are a hard conflict
+
+security:
+  spill_to_disk: false      # intermediates stay in memory; if enabled they are AES-GCM encrypted
+
+limits:
+  max_json_depth: 200       # deeper JSON is quarantined (no recursion bombs)
+  max_file_mb: 200
