@@ -1,0 +1,25 @@
+{
+  "_export_meta": {
+    "hospital": "Qwerty Hospital",
+    "source_path": "D:\\HIS\\exports\\[REDACTED]\\visits.json"
+  },
+  "visits": [
+    {
+      "visit_id": "OPD/26/03/0001",
+      "patient_ref": "PSN-NMER6T",
+      "visit_date": "11/04/2026",
+      "doctor": "Dr. Kavita Rao",
+      "complaints": "C/O pain abdomen x 2 days",
+      "notes": "PSN-NMER6T ka BP 130/80, dawai time pe le rahe hain.",
+      "[REDACTED-e34ca6c0]": "yes"
+    },
+    {
+      "visit_id": "OPD/26/03/0002",
+      "patient_ref": "PSN-9DJRX7",
+      "visit_date": "08/04/2026",
+      "doctor": "Dr. Kavita Rao",
+      "complaints": "C/O cough x 5 days",
+      "notes": "PSN-9DJRX7 ka BP 120/80."
+    }
+  ]
+}

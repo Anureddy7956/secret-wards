@@ -1,0 +1,19 @@
+QWERTY HOSPITAL, UTTAR PRADESH
+DISCHARGE SUMMARY
+
+Patient Name: PSN-WR6SWW        Age/Sex: 40-59 Yrs/M
+UHID: PSN-WR6SWW
+S/o [RELATIVE]
+Address: [ADDRESS]
+Mobile: [PHONE]
+Consultant: Dr. Ramesh Srivastava (MD Medicine)
+Ward/Bed: Ward 4 (Medicine) / Bed 12
+Date of Admission: 04/04/2026
+Date of Discharge: 13/04/2026
+
+Diagnosis: Diseases of the circulatory system (I00-I99)
+Presenting complaints: C/O fever x 3 days, headache.
+History: K/C/O DM2 x 5 yrs. Known case of Parkinson's disease.
+Course: BP 150/90 mmHg, SpO2 96%, Hb 9.8 g/dL. PSN-WR6SWW ka BP ab theek hai.
+Medications: Tab Ramipril 5 mg 1-0-1 x 30 days; Dolo 650 BD x 5 days
+Attendant: [RELATIVE], Mob. [PHONE]

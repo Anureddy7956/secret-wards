@@ -1,0 +1,81 @@
+{
+  "schema": "raksha-report/1",
+  "files": [
+    {
+      "input_sha256": "b9f567aa37541344f8b402eb861816d709bac4ae831943725b1f02a2222fe05e",
+      "output": null,
+      "status": "quarantined",
+      "reason": "unsupported_format"
+    },
+    {
+      "input_sha256": "eac84ad10f4fa8db4d279d01525e2c7f9391948a121804fed5eef37cacfe3305",
+      "output": null,
+      "status": "quarantined",
+      "reason": "malformed_json"
+    },
+    {
+      "input_sha256": "02738b98c3bdd340325337dda8f71f447f39e85e10417afc298f4128de83c383",
+      "output": "sanitized/notes/discharge_0500b53ee1.txt",
+      "status": "sanitized"
+    },
+    {
+      "input_sha256": "0f53dda871dae152bc375760bc4c071c7002986c3f54ad5791edd21aad06e36d",
+      "output": "sanitized/notes/rx_hindi.txt",
+      "status": "sanitized"
+    },
+    {
+      "input_sha256": "4d912704d7f302b8ddb09fea0029b6de7b55ae7f238eefd6743d9ea63b3aed7f",
+      "output": "sanitized/notes/visitor_log.txt",
+      "status": "sanitized"
+    },
+    {
+      "input_sha256": "cb524d5d046ec55704028ebc7a372a43fea35591bb181a529c70dd8aac1e5205",
+      "output": "sanitized/opd/visits.json",
+      "status": "sanitized"
+    },
+    {
+      "input_sha256": "135f82892b95494e1173e73cbebfe161790bd087552e73af50d8f4996ef442f5",
+      "output": "sanitized/registration/patients.csv",
+      "status": "sanitized"
+    }
+  ],
+  "counts": {
+    "files_total": 7,
+    "files_sanitized": 5,
+    "files_quarantined": 2,
+    "records_processed": 8,
+    "identifiers_detected": 47,
+    "records_linked": 7,
+    "records_generalized": 5,
+    "records_suppressed": 1,
+    "records_quarantined": 0
+  },
+  "entities": {
+    "AADHAAR": 2,
+    "ADDRESS": 4,
+    "DISTRICT": 1,
+    "DOB": 3,
+    "KEY": 1,
+    "MRN": 6,
+    "OTHER_NAME": 1,
+    "PATIENT_NAME": 8,
+    "PHONE": 7,
+    "PIN": 3,
+    "RELATIVE_NAME": 6,
+    "VILLAGE": 3
+  },
+  "privacy": {
+    "age_band_width": 20,
+    "location_level": "state",
+    "k_target": 5,
+    "k_min": 1,
+    "share_below_k": 1.0,
+    "rare_values_generalized": 1
+  },
+  "timing": {
+    "seconds": 0.05
+  },
+  "resources": {
+    "peak_rss_mb": 32.4
+  }
+}
